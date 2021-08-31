@@ -1,12 +1,13 @@
-package com.anyoptional.raft.core.election.role;
+package com.anyoptional.raft.core.node.role;
 
-import com.anyoptional.raft.core.election.scheduler.LogReplicationTask;
+import com.anyoptional.raft.core.schedule.LogReplicationTask;
+import com.anyoptional.raft.core.node.NodeGroup;
 
 /**
  * leader 节点没有选举超时（本身就是leader了还选什么），但它需要定时给
  * follower 发送心跳消息、同步日志
  *
- * 注意，日志复制进度在 {@link com.anyoptional.raft.core.NodeGroup}
+ * 注意，日志复制进度在 {@link NodeGroup}
  */
 public class LeaderNodeRole extends AbstractNodeRole {
 

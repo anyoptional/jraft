@@ -1,4 +1,4 @@
-package com.anyoptional.raft.core.election.role;
+package com.anyoptional.raft.core.node.role;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

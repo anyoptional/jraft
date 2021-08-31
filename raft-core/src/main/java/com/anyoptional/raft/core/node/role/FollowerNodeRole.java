@@ -1,7 +1,7 @@
-package com.anyoptional.raft.core.election.role;
+package com.anyoptional.raft.core.node.role;
 
-import com.anyoptional.raft.core.NodeId;
-import com.anyoptional.raft.core.election.scheduler.ElectionTimeout;
+import com.anyoptional.raft.core.node.NodeId;
+import com.anyoptional.raft.core.schedule.ElectionTimeout;
 import org.springframework.lang.Nullable;
 
 /**

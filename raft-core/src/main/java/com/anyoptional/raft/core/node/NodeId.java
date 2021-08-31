@@ -1,4 +1,4 @@
-package com.anyoptional.raft.core;
+package com.anyoptional.raft.core.node;
 
 
 import com.google.common.base.Preconditions;

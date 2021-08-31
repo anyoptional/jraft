@@ -12,6 +12,7 @@
     <artifactId>raft-core</artifactId>
 
     <properties>
+        <project.build.SourceEncoding>UTF-8</project.build.SourceEncoding>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
     </properties>

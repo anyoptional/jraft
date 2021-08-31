@@ -1,14 +1,16 @@
-package com.anyoptional.raft.core.election.scheduler;
+package com.anyoptional.raft.core.schedule;
 
 import com.google.common.base.Preconditions;
 import io.netty.util.concurrent.DefaultEventExecutor;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.EventExecutor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Random;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class DefaultScheduler implements Scheduler {
 
     /**
@@ -54,12 +56,14 @@ public class DefaultScheduler implements Scheduler {
 
     @Override
     public LogReplicationTask scheduleLogReplicationTask(Runnable task) {
+        log.debug("schedule log replication task");
         ScheduledFuture<?> scheduledFuture = executor.scheduleWithFixedDelay(task, logReplicationDelay, logReplicationInterval, TimeUnit.MILLISECONDS);
         return new LogReplicationTask(scheduledFuture);
     }
 
     @Override
     public ElectionTimeout scheduleElectionTimeout(Runnable task) {
+        log.debug("schedule election timeout");
         int delay = electionTimeoutRandom.nextInt(maxElectionTimeout - minElectionTimeout) + minElectionTimeout;
         ScheduledFuture<?> scheduledFuture = executor.schedule(task, delay, TimeUnit.MILLISECONDS);
         return new ElectionTimeout(scheduledFuture);
@@ -67,6 +71,7 @@ public class DefaultScheduler implements Scheduler {
 
     @Override
     public void stop() throws InterruptedException {
+        log.debug("stop scheduler");
         executor.shutdownGracefully();
     }
 

@@ -1,4 +1,7 @@
-package com.anyoptional.raft.core.election.scheduler;
+package com.anyoptional.raft.core.schedule;
+
+import com.anyoptional.raft.core.schedule.ElectionTimeout;
+import com.anyoptional.raft.core.schedule.LogReplicationTask;
 
 public interface Scheduler {
 

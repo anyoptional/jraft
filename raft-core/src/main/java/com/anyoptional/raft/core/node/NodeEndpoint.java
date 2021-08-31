@@ -1,5 +1,6 @@
-package com.anyoptional.raft.core;
+package com.anyoptional.raft.core.node;
 
+import com.anyoptional.raft.core.rpc.Address;
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.ToString;
