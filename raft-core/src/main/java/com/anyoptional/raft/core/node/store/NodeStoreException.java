@@ -8,6 +8,15 @@ public class NodeStoreException extends RuntimeException {
     /**
      * Create.
      *
+     * @param message message
+     */
+    public NodeStoreException(String message) {
+        super(message);
+    }
+
+    /**
+     * Create.
+     *
      * @param cause cause
      */
     public NodeStoreException(Throwable cause) {

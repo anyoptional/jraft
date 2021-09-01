@@ -1,5 +1,6 @@
 package com.anyoptional.raft.core.node.role;
 
+import com.anyoptional.raft.core.node.NodeId;
 import com.anyoptional.raft.core.schedule.LogReplicationTask;
 import com.anyoptional.raft.core.node.NodeGroup;
 
@@ -21,6 +22,11 @@ public class LeaderNodeRole extends AbstractNodeRole {
     @Override
     public void cancelTimeoutOrTask() {
         logReplicationTask.cancel();
+    }
+
+    @Override
+    public NodeId getLeaderId(NodeId selfId) {
+        return selfId;
     }
 
     @Override

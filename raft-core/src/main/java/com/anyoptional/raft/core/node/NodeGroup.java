@@ -6,10 +6,7 @@ import com.anyoptional.raft.core.node.NodeId;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -64,6 +61,20 @@ public class NodeGroup {
                 // 除 selfId 之外的节点
                 .filter($0 -> !$0.getEndpoint().getId().equals(selfId))
                 .collect(Collectors.toList());
+    }
+
+    public Set<NodeEndpoint> getEndpointsExceptSelf() {
+        Set<NodeEndpoint> result = new HashSet<>();
+        for (GroupMember member : members.values()) {
+            if (!member.getEndpoint().getId().equals(selfId)) {
+                result.add(member.getEndpoint());
+            }
+        }
+        return result;
+    }
+
+    public int getCount() {
+        return members.size();
     }
 
     private Map<NodeId, GroupMember> initMembers(Collection<NodeEndpoint> endpoints) {

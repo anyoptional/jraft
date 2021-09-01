@@ -1,7 +1,9 @@
 package com.anyoptional.raft.core.node.role;
 
+import com.anyoptional.raft.core.node.NodeId;
 import com.anyoptional.raft.core.schedule.ElectionTimeout;
 import com.google.common.base.Preconditions;
+import org.springframework.lang.Nullable;
 
 public class CandidateNodeRole extends AbstractNodeRole {
 
@@ -41,6 +43,12 @@ public class CandidateNodeRole extends AbstractNodeRole {
     @Override
     public void cancelTimeoutOrTask() {
         electionTimeout.cancel();
+    }
+
+    @Override
+    @Nullable
+    public NodeId getLeaderId(NodeId selfId) {
+        return null;
     }
 
     @Override

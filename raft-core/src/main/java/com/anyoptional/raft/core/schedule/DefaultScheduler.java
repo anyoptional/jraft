@@ -1,5 +1,6 @@
 package com.anyoptional.raft.core.schedule;
 
+import com.anyoptional.raft.core.node.config.NodeConfig;
 import com.google.common.base.Preconditions;
 import io.netty.util.concurrent.DefaultEventExecutor;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -42,6 +43,11 @@ public class DefaultScheduler implements Scheduler {
      * 用于调度定时任务的执行器
      */
     private final EventExecutor executor = new DefaultEventExecutor(new DefaultThreadFactory("scheduler"));
+
+    public DefaultScheduler(NodeConfig config) {
+        this(config.getMinElectionTimeout(), config.getMaxElectionTimeout(), config.getLogReplicationDelay(),
+                config.getLogReplicationInterval());
+    }
 
     public DefaultScheduler(int minElectionTimeout, int maxElectionTimeout,
                             int logReplicationDelay, int logReplicationInterval) {

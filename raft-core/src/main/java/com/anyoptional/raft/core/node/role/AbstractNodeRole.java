@@ -1,5 +1,6 @@
 package com.anyoptional.raft.core.node.role;
 
+import com.anyoptional.raft.core.node.NodeId;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -19,6 +20,12 @@ public abstract class AbstractNodeRole {
      * leader 节点任期号
      */
     protected final int term;
+
+    public RoleNameAndLeaderId getNameAndLeaderId(NodeId selfId) {
+        return new RoleNameAndLeaderId(name, getLeaderId(selfId));
+    }
+
+    public abstract NodeId getLeaderId(NodeId selfId);
 
     /**
      * 取消超时 或 取消定时任务
