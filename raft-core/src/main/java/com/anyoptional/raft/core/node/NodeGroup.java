@@ -1,8 +1,5 @@
 package com.anyoptional.raft.core.node;
 
-import com.anyoptional.raft.core.node.GroupMember;
-import com.anyoptional.raft.core.node.NodeEndpoint;
-import com.anyoptional.raft.core.node.NodeId;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 

@@ -9,7 +9,7 @@ import org.springframework.util.Assert;
 public class GroupMember {
 
     /**
-     * 节点的id和ip
+     * 节点的 id 和 ip
      */
     private final NodeEndpoint endpoint;
 

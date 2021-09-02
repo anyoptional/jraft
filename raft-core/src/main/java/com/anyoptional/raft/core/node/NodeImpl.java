@@ -55,10 +55,9 @@ public class NodeImpl implements Node {
     }
 
     @Override
-    public void start() {
+    public synchronized void start() {
         if (started) return;
-        // 标记已启动
-        started = true;
+
         // 注册自身到 EventBus
         context.getEventBus().register(this);
         // 初始化 rpc 组件
@@ -67,6 +66,9 @@ public class NodeImpl implements Node {
         // 获取可能的投票记录和leader任期
         NodeStore store = context.getStore();
         changeToRole(new FollowerNodeRole(store.getTerm(), store.getVotedFor(), null, scheduleElectionTimeout()));
+
+        // 标记已启动
+        started = true;
     }
 
     @Override
@@ -110,7 +112,7 @@ public class NodeImpl implements Node {
     /**
      * 选举超时入口
      */
-    private void electionTimeout() {
+    void electionTimeout() {
         // electionTimeout 在定时任务线程中执行的
         // 我们需要把它调度到任务线程中执行（NodeImpl的逻辑处理都在任务线程）
         context.getTaskExecutor().submit(this::doProcessElectionTimeout);
@@ -129,8 +131,7 @@ public class NodeImpl implements Node {
      *  2、发起投票请求
      */
     private void doProcessElectionTimeout() {
-        // 某个 candidate 向当前节点发起投票请求
-        // 这个过程中当前节点成为了 leader
+        // bug ?
         if (role.getName() == RoleName.LEADER) {
             logger.warn("node {} is leader right now, ignore election timeout", context.getSelfId());
             return;
@@ -150,6 +151,7 @@ public class NodeImpl implements Node {
         RequestVoteRpc rpc = new RequestVoteRpc();
         rpc.setTerm(newTerm);
         rpc.setCandidateId(context.getSelfId());
+        // TODO: 当前日志进度
         rpc.setLastLogIndex(0);
         rpc.setLastLogTerm(0);
 
@@ -177,9 +179,11 @@ public class NodeImpl implements Node {
     private RequestVoteResult doProcessRequestVoteRpc(RequestVoteRpcMessage rpcMessage) {
         RequestVoteRpc rpc = rpcMessage.get();
         // 时代变啦
+        // 网络抖动产生的过期消息
         if (rpc.getTerm() < role.getTerm()) {
             logger.debug("term from rpc < current term, don't vote: {} < {}", rpc.getTerm(), role.getTerm());
             // 返回当前的 term 给发起方，不投票
+            // 返回当前的 term 是为了让对方得到更新，进入新时代
             return new RequestVoteResult(role.getTerm(), false);
         }
 
@@ -188,6 +192,8 @@ public class NodeImpl implements Node {
 
         // candidate 的 term 比自身的大
         if (rpc.getTerm() > role.getTerm()) {
+            // 这里收到投票请求的，可能是另一个 candidate
+            // 投不投票看情况，但是切换成 follower 是必须的
             becomeFollower(rpc.getTerm(), voteGranted ? rpc.getCandidateId() : null, null, true);
             return new RequestVoteResult(rpc.getTerm(), voteGranted);
         }
@@ -271,7 +277,7 @@ public class NodeImpl implements Node {
         // 因为接下来要么成为 leader，要么递增票数
         role.cancelTimeoutOrTask();
         // 多数赞同
-        if (currentVotesCount < countOfMajor / 2) {
+        if (currentVotesCount > countOfMajor / 2) {
             logger.info("become leader, term {}", role.getTerm());
             // raft 算法要求，成为 leader 后必须马上发送心跳消息给其它 follower 节点从而
             // 重置其选举超时，进而使集群的主从关系稳定下来
@@ -293,6 +299,7 @@ public class NodeImpl implements Node {
         AppendEntriesRpc rpc = new AppendEntriesRpc();
         rpc.setTerm(role.getTerm());
         rpc.setLeaderId(context.getSelfId());
+        // TODO: 日志复制
         rpc.setPrevLogIndex(0);
         rpc.setPrevLogTerm(0);
         rpc.setLeaderCommit(0);
@@ -342,6 +349,7 @@ public class NodeImpl implements Node {
                 return new AppendEntriesResult(rpc.getTerm(), appendEntries(rpc));
             }
             case LEADER: {
+                // bug !
                 logger.warn("receive append entries rpc from another leader {}, ignore", rpc.getLeaderId());
                 return new AppendEntriesResult(rpc.getTerm(), false);
             }
@@ -372,7 +380,7 @@ public class NodeImpl implements Node {
             return;
         }
 
-        // check role
+        // 只有 leader 才有资格收到 日志复制 的响应
         if (role.getName() != RoleName.LEADER) {
             logger.warn("receive append entries result from node {} but current node is not leader, ignore", resultMessage.getSourceNodeId());
         }
