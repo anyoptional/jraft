@@ -1,5 +1,7 @@
 package com.anyoptional.raft.core.node;
 
+import com.anyoptional.raft.core.node.config.NodeConfig;
+import com.anyoptional.raft.core.node.log.Log;
 import com.anyoptional.raft.core.node.store.NodeStore;
 import com.anyoptional.raft.core.schedule.Scheduler;
 import com.anyoptional.raft.core.support.TaskExecutor;
@@ -27,7 +29,11 @@ public class NodeContext {
      * 集群成员列表
      */
     private NodeGroup group;
-//    private Log log;
+
+    /**
+     * 日志组件
+     */
+    private Log log;
 
     /**
      * rpc 组件
@@ -45,7 +51,8 @@ public class NodeContext {
     private Scheduler scheduler;
 
 //    private NodeMode mode;
-//    private NodeConfig config;
+
+    private NodeConfig config;
 
     /**
      * 通信组件

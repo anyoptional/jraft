@@ -161,11 +161,15 @@ public class NodeImplTest {
                 new NodeEndpoint("C", "localhost", 3308)
         ).build();
 
+        node.getContext().getLog().appendEntry(1);
+
         node.start();
 
         AppendEntriesRpc rpc = new AppendEntriesRpc();
         rpc.setLeaderId(NodeId.of("B"));
         rpc.setTerm(1);
+        rpc.setPrevLogIndex(1);
+        rpc.setPrevLogTerm(1);
 
         node.onReceiveAppendEntriesRpc(new AppendEntriesRpcMessage(rpc, NodeId.of("B"), null));
         MockConnector connector = (MockConnector) node.getContext().getConnector();

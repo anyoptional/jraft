@@ -1,6 +1,9 @@
 package com.anyoptional.raft.core.node;
 
 import com.anyoptional.raft.core.node.config.NodeConfig;
+import com.anyoptional.raft.core.node.log.FileLog;
+import com.anyoptional.raft.core.node.log.Log;
+import com.anyoptional.raft.core.node.log.MemoryLog;
 import com.anyoptional.raft.core.node.store.FileNodeStore;
 import com.anyoptional.raft.core.node.store.MemoryNodeStore;
 import com.anyoptional.raft.core.node.store.NodeStore;
@@ -15,6 +18,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import org.springframework.lang.Nullable;
 
 import javax.annotation.Nonnull;
+import java.io.File;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -48,12 +52,13 @@ public class NodeBuilder {
      */
     private boolean standby = false;
 
-//    /**
-//     * Log.
-//     * If data directory specified, {@link FileLog} will be created.
-//     * Default to {@link MemoryLog}.
-//     */
-//    private Log log = null;
+    /**
+     * Log.
+     * If data directory specified, {@link FileLog} will be created.
+     * Default to {@link MemoryLog}.
+     */
+    @Nullable
+    private Log log = null;
 
     /**
      * Store for current term and last node id voted for.
@@ -217,24 +222,24 @@ public class NodeBuilder {
         return this;
     }
 
-//    /**
-//     * Set data directory.
-//     *
-//     * @param dataDirPath data directory
-//     * @return this
-//     */
-//    public NodeBuilder setDataDir(@Nullable String dataDirPath) {
-//        if (dataDirPath == null || dataDirPath.isEmpty()) {
-//            return this;
-//        }
-//        File dataDir = new File(dataDirPath);
-//        if (!dataDir.isDirectory() || !dataDir.exists()) {
-//            throw new IllegalArgumentException("[" + dataDirPath + "] not a directory, or not exists");
-//        }
-//        log = new FileLog(dataDir, eventBus);
-//        store = new FileNodeStore(new File(dataDir, FileNodeStore.FILE_NAME));
-//        return this;
-//    }
+    /**
+     * Set data directory.
+     *
+     * @param dataDirPath data directory
+     * @return this
+     */
+    public NodeBuilder setDataDir(@Nullable String dataDirPath) {
+        if (dataDirPath == null || dataDirPath.isEmpty()) {
+            return this;
+        }
+        File dataDir = new File(dataDirPath);
+        if (!dataDir.isDirectory() || !dataDir.exists()) {
+            throw new IllegalArgumentException("[" + dataDirPath + "] not a directory, or not exists");
+        }
+        log = new FileLog(dataDir);
+        store = new FileNodeStore(new File(dataDir, FileNodeStore.FILE_NAME));
+        return this;
+    }
 
     /**
      * Build node.
@@ -256,10 +261,10 @@ public class NodeBuilder {
         NodeContext context = new NodeContext();
         context.setGroup(group);
 //        context.setMode(evaluateMode());
-//        context.setLog(log != null ? log : new MemoryLog(eventBus));
+        context.setLog(log != null ? log : new MemoryLog());
         context.setStore(store != null ? store : new MemoryNodeStore());
         context.setSelfId(selfId);
-//        context.setConfig(config);
+        context.setConfig(config);
         context.setEventBus(eventBus);
         context.setScheduler(scheduler != null ? scheduler : new DefaultScheduler(config));
         context.setConnector(connector);

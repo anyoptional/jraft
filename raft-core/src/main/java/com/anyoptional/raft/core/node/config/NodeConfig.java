@@ -45,12 +45,12 @@ public class NodeConfig {
     /**
      * Max entries to send when replicate log to followers
      */
-    private int maxReplicationEntries = Integer.MAX_VALUE;
+    private int maxReplicationEntries = -1;
 
     /**
      * Max entries to send when replicate log to new node
      */
-    private int maxReplicationEntriesForNewNode = Integer.MAX_VALUE;
+    private int maxReplicationEntriesForNewNode = -1;
 
     /**
      * Data length in install snapshot rpc.

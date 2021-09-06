@@ -1,6 +1,7 @@
 package com.anyoptional.raft.core.node;
 
 
+import com.anyoptional.raft.core.node.log.entry.EntryMeta;
 import com.anyoptional.raft.core.node.role.*;
 import com.anyoptional.raft.core.node.store.NodeStore;
 import com.anyoptional.raft.core.rpc.Connector;
@@ -151,9 +152,9 @@ public class NodeImpl implements Node {
         RequestVoteRpc rpc = new RequestVoteRpc();
         rpc.setTerm(newTerm);
         rpc.setCandidateId(context.getSelfId());
-        // TODO: 当前日志进度
-        rpc.setLastLogIndex(0);
-        rpc.setLastLogTerm(0);
+        EntryMeta lastEntryMeta = context.getLog().getLastEntryMeta();
+        rpc.setLastLogIndex(lastEntryMeta.getIndex());
+        rpc.setLastLogTerm(lastEntryMeta.getTerm());
 
         Connector connector = context.getConnector();
         // 获取集群中的其它节点（不包括自身）
@@ -187,8 +188,7 @@ public class NodeImpl implements Node {
             return new RequestVoteResult(role.getTerm(), false);
         }
 
-        // TODO: 还需要比较日志条目
-        boolean voteGranted = true;
+        boolean voteGranted = !context.getLog().isNewerThan(rpc.getLastLogIndex(), rpc.getLastLogTerm());
 
         // candidate 的 term 比自身的大
         if (rpc.getTerm() > role.getTerm()) {
@@ -204,6 +204,16 @@ public class NodeImpl implements Node {
         // 多个节点以不同的 term 启动（宕机前记录的），选举超时后，
         // candidate 碰巧发送投票请求到比自己 term 大的 follower 节点
         // 此时仍旧比较日志决定是否投票
+        // 比如
+        // node1 1 2 3
+        // node2 1 2 3 （4）
+        // node3 1 2 3
+        // 3个节点term相同，假如此时发生了选举，node2
+        // 收到了 term 为4的投票请求，投完票后宕机，此时
+        // NodeStore记录的就是4，假如node3成功成为leader，
+        // 但还没有处理任何日志复制就宕机，那么它的 term 仍然
+        // 是3。都重启后再次发生选举，node1成为候选者，它发出
+        // term为4的投票请求，就会发生 case1
         // case 2:
         // 同时出现了两个 candidate，其中部分已投票的 follower
         // 可能收到其它 candidate 的投票请求，此时就需要比对是不是
@@ -279,9 +289,12 @@ public class NodeImpl implements Node {
         // 多数赞同
         if (currentVotesCount > countOfMajor / 2) {
             logger.info("become leader, term {}", role.getTerm());
+            resetReplicatingStates();
             // raft 算法要求，成为 leader 后必须马上发送心跳消息给其它 follower 节点从而
             // 重置其选举超时，进而使集群的主从关系稳定下来
             changeToRole(new LeaderNodeRole(role.getTerm(), scheduleLogReplicationTask()));
+            // 发送 no-op
+            context.getLog().appendEntry(role.getTerm()); // no-op log
         } else {
             changeToRole(new CandidateNodeRole(role.getTerm(), currentVotesCount, scheduleElectionTimeout()));
         }
@@ -291,19 +304,20 @@ public class NodeImpl implements Node {
         logger.debug("replicate log");
         // 发送 AppendEntries 消息进行日志复制
         for (GroupMember member : context.getGroup().getReplicatingGroupMembers()) {
-            doReplicateLog0(member);
+            doReplicateLog0(member, context.getConfig().getMaxReplicationEntries());
         }
     }
 
-    private void doReplicateLog0(GroupMember member) {
-        AppendEntriesRpc rpc = new AppendEntriesRpc();
-        rpc.setTerm(role.getTerm());
-        rpc.setLeaderId(context.getSelfId());
-        // TODO: 日志复制
-        rpc.setPrevLogIndex(0);
-        rpc.setPrevLogTerm(0);
-        rpc.setLeaderCommit(0);
+    private void doReplicateLog0(GroupMember member, int maxEntries) {
+        AppendEntriesRpc rpc = context.getLog().createAppendEntriesRpc(role.getTerm(), context.getSelfId(), member.getNextIndex(), maxEntries);
         context.getConnector().sendAppendEntries(rpc, member.getEndpoint());
+    }
+
+    /**
+     * Reset replicating states.
+     */
+    private void resetReplicatingStates() {
+        context.getGroup().resetReplicatingStates(context.getLog().getNextIndex());
     }
 
     /**
@@ -359,7 +373,12 @@ public class NodeImpl implements Node {
     }
 
     private boolean appendEntries(AppendEntriesRpc rpc) {
-        return true;
+        boolean result = context.getLog().appendEntriesFromLeader(rpc.getPrevLogIndex(), rpc.getPrevLogTerm(), rpc.getEntries());
+        // 追加成功时，follower 需要根据 leader 的 commitIndex 决定是否推进本地的 commitIndex
+        if (result) {
+            context.getLog().advanceCommitIndex(Math.min(rpc.getLeaderCommit(), rpc.getLastEntryIndex()), rpc.getTerm());
+        }
+        return result;
     }
 
     @Subscribe
@@ -383,6 +402,27 @@ public class NodeImpl implements Node {
         // 只有 leader 才有资格收到 日志复制 的响应
         if (role.getName() != RoleName.LEADER) {
             logger.warn("receive append entries result from node {} but current node is not leader, ignore", resultMessage.getSourceNodeId());
+        }
+
+        NodeId sourceNodeId = resultMessage.getSourceNodeId();
+        GroupMember member = context.getGroup().getGroupMember(sourceNodeId);
+        // 没有指定的成员
+        if (member == null) {
+            logger.info("unexpected append entries result from node {}, node maybe removed", sourceNodeId);
+            return;
+        }
+        // 回复成功
+        // 推进 matchIndex 和 nextIndex
+        if (result.isSuccess()) {
+            if (member.advanceReplicatingState(rpc.getLastEntryIndex())) {
+                context.getLog().advanceCommitIndex(context.getGroup().getMatchIndexOfMajor(), role.getTerm());
+            }
+        }
+        // 回复失败
+        else {
+            if (!member.backOffNextIndex()) {
+                logger.warn("cannot back off next index more, node {}", sourceNodeId);
+            }
         }
     }
 

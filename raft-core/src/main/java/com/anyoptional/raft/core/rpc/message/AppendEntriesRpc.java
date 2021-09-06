@@ -1,6 +1,7 @@
 package com.anyoptional.raft.core.rpc.message;
 
 import com.anyoptional.raft.core.node.NodeId;
+import com.anyoptional.raft.core.node.log.entry.Entry;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -39,7 +40,7 @@ public class AppendEntriesRpc {
     /**
      * 要复制的日志条目
      */
-    private List<Object> entries = Collections.emptyList();
+    private List<Entry> entries = Collections.emptyList();
 
     /**
      * leader 的 commitIndex
@@ -47,5 +48,9 @@ public class AppendEntriesRpc {
      * 索引大于 commitIndex 的日志是已追加但未持久化的（还未得到超半数节点的确认）
      */
     private int leaderCommit;
+
+    public int getLastEntryIndex() {
+        return this.entries.isEmpty() ? this.prevLogIndex : this.entries.get(this.entries.size() - 1).getIndex();
+    }
 
 }

@@ -1,8 +1,11 @@
 package com.anyoptional.raft.core.node;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
+import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -10,6 +13,8 @@ import java.util.stream.Collectors;
  * 集群中的节点信息，每个节点都会保存一份
  */
 public class NodeGroup {
+
+    private static final Logger logger = LoggerFactory.getLogger(NodeGroup.class);
 
     /**
      * 当前节点id
@@ -83,4 +88,71 @@ public class NodeGroup {
         return result;
     }
 
+    /**
+     * Reset replicating state.
+     *
+     * @param nextLogIndex next log index
+     */
+    void resetReplicatingStates(int nextLogIndex) {
+        for (GroupMember member : members.values()) {
+            if (!member.idEquals(selfId)) {
+                member.setReplicatingState(new ReplicatingState(nextLogIndex));
+            }
+        }
+    }
+
+    /**
+     * Get match index of major members.
+     * <p>
+     * To get major match index in group, sort match indices and get the middle one.
+     * </p>
+     *
+     * @return match index
+     */
+    int getMatchIndexOfMajor() {
+        List<NodeMatchIndex> matchIndices = new ArrayList<>();
+        for (GroupMember member : members.values()) {
+            if (!member.idEquals(selfId)) {
+                matchIndices.add(new NodeMatchIndex(member.getEndpoint().getId(), member.getMatchIndex()));
+            }
+        }
+        int count = matchIndices.size();
+        if (count == 0) {
+            throw new IllegalStateException("standalone or no major node");
+        }
+        Collections.sort(matchIndices);
+        logger.debug("match indices {}", matchIndices);
+        return matchIndices.get(count / 2).getMatchIndex();
+    }
+
+    /**
+     * Node match index.
+     *
+     * @see NodeGroup#getMatchIndexOfMajor()
+     */
+    private static class NodeMatchIndex implements Comparable<NodeMatchIndex> {
+
+        private final NodeId nodeId;
+        private final int matchIndex;
+
+        NodeMatchIndex(NodeId nodeId, int matchIndex) {
+            this.nodeId = nodeId;
+            this.matchIndex = matchIndex;
+        }
+
+        int getMatchIndex() {
+            return matchIndex;
+        }
+
+        @Override
+        public int compareTo(@Nonnull NodeMatchIndex o) {
+            return -Integer.compare(o.matchIndex, this.matchIndex);
+        }
+
+        @Override
+        public String toString() {
+            return "<" + nodeId + ", " + matchIndex + ">";
+        }
+
+    }
 }

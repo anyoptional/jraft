@@ -50,6 +50,18 @@ public class GroupMember {
         return unwrapReplicatingState().getMatchIndex();
     }
 
+    boolean advanceReplicatingState(int lastEntryIndex) {
+        return unwrapReplicatingState().advance(lastEntryIndex);
+    }
+
+    boolean idEquals(NodeId id) {
+        return endpoint.getId().equals(id);
+    }
+
+    boolean backOffNextIndex() {
+        return unwrapReplicatingState().backOffNextIndex();
+    }
+
     private ReplicatingState unwrapReplicatingState() {
         Assert.state(replicatingState != null, "replicatingState not set");
         return replicatingState;
