@@ -12,10 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public abstract class AbstractLog implements Log {
 
@@ -56,6 +53,7 @@ public abstract class AbstractLog implements Log {
             throw new IllegalArgumentException("illegal next index " + nextIndex);
         }
         AppendEntriesRpc rpc = new AppendEntriesRpc();
+        rpc.setMessageId(UUID.randomUUID().variant());
         rpc.setTerm(term);
         rpc.setLeaderId(selfId);
         rpc.setLeaderCommit(commitIndex);

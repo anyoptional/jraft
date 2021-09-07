@@ -202,11 +202,12 @@ public class NodeImplTest {
 
         node.replicateLog();
 
+        AppendEntriesRpc rpc = new AppendEntriesRpc();
         // leader A 收到 B 回复的消息
         node.onReceiveAppendEntriesResult(new AppendEntriesResultMessage(
-                new AppendEntriesResult(1, true),
+                new AppendEntriesResult(1, true, rpc.getMessageId()),
                 NodeId.of("B"),
-                new AppendEntriesRpc()
+                rpc
         ));
 
         AbstractNodeRole role = node.getRole();

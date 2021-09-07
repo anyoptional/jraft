@@ -1,6 +1,8 @@
 package com.anyoptional.raft.core.node;
 
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.ToString;
@@ -16,7 +18,8 @@ public class NodeId {
 
     private final String value;
 
-    public NodeId(String value) {
+    @JsonCreator
+    public NodeId(@JsonProperty("value") String value) {
         Preconditions.checkNotNull(value);
         this.value = value;
     }

@@ -337,13 +337,13 @@ public class NodeImpl implements Node {
         AppendEntriesRpc rpc = rpcMessage.get();
         // 如果对方 term 比自己小，回复自己的 term
         if (rpc.getTerm() < role.getTerm()) {
-            return new AppendEntriesResult(role.getTerm(), false);
+            return new AppendEntriesResult(role.getTerm(), false, rpc.getMessageId());
         }
 
         // 如果对方 term 比自己大，则退化成 follower
         if (rpc.getTerm() > role.getTerm()) {
             becomeFollower(rpc.getTerm(), null, rpc.getLeaderId(), true);
-            return new AppendEntriesResult(rpc.getTerm(), appendEntries(rpc));
+            return new AppendEntriesResult(rpc.getTerm(), appendEntries(rpc), rpc.getMessageId());
         }
 
         Assert.isTrue(rpc.getTerm() == role.getTerm(), "should equal");
@@ -353,19 +353,19 @@ public class NodeImpl implements Node {
             case FOLLOWER: {
                 becomeFollower(rpc.getTerm(), ((FollowerNodeRole) role).getVotedFor(), rpc.getLeaderId(), true);
                 // 追加日志
-                return new AppendEntriesResult(rpc.getTerm(), appendEntries(rpc));
+                return new AppendEntriesResult(rpc.getTerm(), appendEntries(rpc), rpc.getMessageId());
             }
             // 同时有多个 candidate，其中一个成为了 leader
             case CANDIDATE: {
                 // 退化成 follower，重置选举定时器
                 becomeFollower(rpc.getTerm(), null, rpc.getLeaderId(), true);
                 // 追加日志
-                return new AppendEntriesResult(rpc.getTerm(), appendEntries(rpc));
+                return new AppendEntriesResult(rpc.getTerm(), appendEntries(rpc), rpc.getMessageId());
             }
             case LEADER: {
                 // bug !
                 logger.warn("receive append entries rpc from another leader {}, ignore", rpc.getLeaderId());
-                return new AppendEntriesResult(rpc.getTerm(), false);
+                return new AppendEntriesResult(rpc.getTerm(), false, rpc.getMessageId());
             }
             default:
                 throw new IllegalStateException("unexpected node role [" + role.getName() + "]");

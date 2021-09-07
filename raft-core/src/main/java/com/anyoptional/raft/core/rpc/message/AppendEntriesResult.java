@@ -1,12 +1,12 @@
 package com.anyoptional.raft.core.rpc.message;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 
 @Getter
 @ToString
-@RequiredArgsConstructor
 public class AppendEntriesResult {
 
     /**
@@ -18,5 +18,16 @@ public class AppendEntriesResult {
      * 是否追加成功
      */
     private final boolean success;
+
+    private final int rpcMessageId;
+
+    @JsonCreator
+    public AppendEntriesResult(@JsonProperty("term") int term,
+                               @JsonProperty("success") boolean success,
+                               @JsonProperty("rpcMessageId") int rpcMessageId)  {
+        this.term = term;
+        this.success = success;
+        this.rpcMessageId = rpcMessageId;
+    }
 
 }

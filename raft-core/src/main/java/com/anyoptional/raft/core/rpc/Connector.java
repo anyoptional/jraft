@@ -49,6 +49,14 @@ public interface Connector extends AutoCloseable {
     }
 
     /**
+     * 重置连接，节点在变成 leader 之后，通过重置
+     * 连接来减少不必要的连接，因为收敛至稳定状态之
+     * 后，理论上只需要维持 leader 到各个 follower
+     * 之间的连接
+     */
+    void resetChannels();
+
+    /**
      * Close connector.
      */
     @Override

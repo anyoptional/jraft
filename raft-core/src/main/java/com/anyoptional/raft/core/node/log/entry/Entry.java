@@ -1,8 +1,11 @@
 package com.anyoptional.raft.core.node.log.entry;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
 /**
  * 日志条目
  */
+@JsonDeserialize(using = EntryDeserializer.class)
 public interface Entry {
 
     // 空日志

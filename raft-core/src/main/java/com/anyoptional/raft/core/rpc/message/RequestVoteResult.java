@@ -1,14 +1,14 @@
 package com.anyoptional.raft.core.rpc.message;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
 @Getter
 @Setter
 @ToString
-@RequiredArgsConstructor
 public class RequestVoteResult {
 
     /**
@@ -20,5 +20,12 @@ public class RequestVoteResult {
      * 是否投票
      */
     private final boolean voteGranted;
+
+    @JsonCreator
+    public RequestVoteResult(@JsonProperty("term") int term,
+                             @JsonProperty("voteGranted") boolean voteGranted) {
+        this.term = term;
+        this.voteGranted = voteGranted;
+    }
 
 }

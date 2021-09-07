@@ -2,6 +2,7 @@ package com.anyoptional.raft.core.rpc.message;
 
 import com.anyoptional.raft.core.node.NodeId;
 import com.anyoptional.raft.core.node.log.entry.Entry;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -16,6 +17,8 @@ import java.util.List;
 @Setter
 @ToString
 public class AppendEntriesRpc {
+
+    private int messageId;
 
     /**
      * 选举ID
@@ -49,6 +52,7 @@ public class AppendEntriesRpc {
      */
     private int leaderCommit;
 
+    @JsonIgnore
     public int getLastEntryIndex() {
         return this.entries.isEmpty() ? this.prevLogIndex : this.entries.get(this.entries.size() - 1).getIndex();
     }
