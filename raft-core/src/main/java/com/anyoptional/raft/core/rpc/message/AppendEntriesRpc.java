@@ -1,7 +1,7 @@
 package com.anyoptional.raft.core.rpc.message;
 
 import com.anyoptional.raft.core.node.NodeId;
-import com.anyoptional.raft.core.node.log.entry.Entry;
+import com.anyoptional.raft.core.log.entry.Entry;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;

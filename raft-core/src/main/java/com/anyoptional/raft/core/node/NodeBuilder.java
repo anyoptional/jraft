@@ -1,9 +1,9 @@
 package com.anyoptional.raft.core.node;
 
 import com.anyoptional.raft.core.node.config.NodeConfig;
-import com.anyoptional.raft.core.node.log.FileLog;
-import com.anyoptional.raft.core.node.log.Log;
-import com.anyoptional.raft.core.node.log.MemoryLog;
+import com.anyoptional.raft.core.log.FileLog;
+import com.anyoptional.raft.core.log.Log;
+import com.anyoptional.raft.core.log.MemoryLog;
 import com.anyoptional.raft.core.node.store.FileNodeStore;
 import com.anyoptional.raft.core.node.store.MemoryNodeStore;
 import com.anyoptional.raft.core.node.store.NodeStore;

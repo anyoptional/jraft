@@ -1,7 +1,7 @@
 package com.anyoptional.raft.core.node;
 
 import com.anyoptional.raft.core.node.config.NodeConfig;
-import com.anyoptional.raft.core.node.log.Log;
+import com.anyoptional.raft.core.log.Log;
 import com.anyoptional.raft.core.node.store.NodeStore;
 import com.anyoptional.raft.core.schedule.Scheduler;
 import com.anyoptional.raft.core.support.TaskExecutor;

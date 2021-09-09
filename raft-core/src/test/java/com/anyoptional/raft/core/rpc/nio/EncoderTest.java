@@ -1,9 +1,9 @@
 package com.anyoptional.raft.core.rpc.nio;
 
 import com.anyoptional.raft.core.node.NodeId;
-import com.anyoptional.raft.core.node.log.entry.Entry;
-import com.anyoptional.raft.core.node.log.entry.GeneralEntry;
-import com.anyoptional.raft.core.node.log.entry.NoOpEntry;
+import com.anyoptional.raft.core.log.entry.Entry;
+import com.anyoptional.raft.core.log.entry.GeneralEntry;
+import com.anyoptional.raft.core.log.entry.NoOpEntry;
 import com.anyoptional.raft.core.rpc.message.AppendEntriesRpc;
 import com.anyoptional.raft.core.rpc.message.MessageConstants;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,8 +14,8 @@ import org.junit.Test;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import static com.anyoptional.raft.core.node.log.entry.Entry.KIND_GENERAL;
-import static com.anyoptional.raft.core.node.log.entry.Entry.KIND_NO_OP;
+import static com.anyoptional.raft.core.log.entry.Entry.KIND_GENERAL;
+import static com.anyoptional.raft.core.log.entry.Entry.KIND_NO_OP;
 import static org.junit.Assert.*;
 
 public class EncoderTest {

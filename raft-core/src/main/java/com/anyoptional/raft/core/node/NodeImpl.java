@@ -1,7 +1,7 @@
 package com.anyoptional.raft.core.node;
 
 
-import com.anyoptional.raft.core.node.log.entry.EntryMeta;
+import com.anyoptional.raft.core.log.entry.EntryMeta;
 import com.anyoptional.raft.core.node.role.*;
 import com.anyoptional.raft.core.node.store.NodeStore;
 import com.anyoptional.raft.core.rpc.Connector;
