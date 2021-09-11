@@ -153,6 +153,8 @@ public abstract class AbstractLog implements Log {
             return false;
         }
         int term = meta.getTerm();
+        // 发生过脑裂，这种情况需要删除 follower 日志中
+        // 与 leader 不匹配的部分
         if (prevLogTerm != term) {
             logger.debug("different term of previous log, local: {}, remote: {}", term, prevLogTerm);
             return false;

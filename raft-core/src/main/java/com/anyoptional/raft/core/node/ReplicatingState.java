@@ -4,6 +4,11 @@ public class ReplicatingState {
 
     /**
      * 下一条需要复制的日志条目的索引
+     * leader 准备发给 follower 的下一条日志条目的索引，
+     * 初始化为 leader 日志的 nextLogIndex，也就是初始
+     * 情况下默认 follower 和 leader 有着相同的进度，后
+     * 续根据 AppendEntries RPCs 的响应来进行调整，最终
+     * nextIndex 会来到一个 leader 和 follower 都持有的位置
      */
     private int nextIndex;
 

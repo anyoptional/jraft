@@ -195,6 +195,7 @@ public class NodeImpl implements Node {
             // 这里收到投票请求的，可能是另一个 candidate
             // 投不投票看情况，但是切换成 follower 是必须的
             becomeFollower(rpc.getTerm(), voteGranted ? rpc.getCandidateId() : null, null, true);
+            // 角色已经发生了变化，成为 follower 之后可以投票了，并不未违反一票制
             return new RequestVoteResult(rpc.getTerm(), voteGranted);
         }
 
@@ -293,7 +294,7 @@ public class NodeImpl implements Node {
             // raft 算法要求，成为 leader 后必须马上发送心跳消息给其它 follower 节点从而
             // 重置其选举超时，进而使集群的主从关系稳定下来
             changeToRole(new LeaderNodeRole(role.getTerm(), scheduleLogReplicationTask()));
-            // 发送 no-op
+            // 添加一条 no-op log，用来同步 index
             context.getLog().appendEntry(role.getTerm()); // no-op log
         } else {
             changeToRole(new CandidateNodeRole(role.getTerm(), currentVotesCount, scheduleElectionTimeout()));
@@ -337,10 +338,12 @@ public class NodeImpl implements Node {
         AppendEntriesRpc rpc = rpcMessage.get();
         // 如果对方 term 比自己小，回复自己的 term
         if (rpc.getTerm() < role.getTerm()) {
+            // leader 收到回信后退化成 follower
             return new AppendEntriesResult(role.getTerm(), false, rpc.getMessageId());
         }
 
         // 如果对方 term 比自己大，则退化成 follower
+        // 可能是前 leader 或 candidate
         if (rpc.getTerm() > role.getTerm()) {
             becomeFollower(rpc.getTerm(), null, rpc.getLeaderId(), true);
             return new AppendEntriesResult(rpc.getTerm(), appendEntries(rpc), rpc.getMessageId());
@@ -412,18 +415,24 @@ public class NodeImpl implements Node {
             return;
         }
         // 回复成功
-        // 推进 matchIndex 和 nextIndex
         if (result.isSuccess()) {
+            // 推进 matchIndex 和 nextIndex
             if (member.advanceReplicatingState(rpc.getLastEntryIndex())) {
+                // 过半节点持久化了的化就推进 leader 的 commitIndex
                 context.getLog().advanceCommitIndex(context.getGroup().getMatchIndexOfMajor(), role.getTerm());
             }
         }
         // 回复失败
         else {
+            // 回退 nextIndex，直到找到和 leader 日志重叠的部分
             if (!member.backOffNextIndex()) {
                 logger.warn("cannot back off next index more, node {}", sourceNodeId);
+                return;
             }
         }
+
+        // 立即重新同步日志，不用等下一次定时任务触发
+        doReplicateLog0(member, context.getConfig().getMaxReplicationEntries());
     }
 
 }

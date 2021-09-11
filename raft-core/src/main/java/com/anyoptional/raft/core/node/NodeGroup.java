@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
-import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -120,6 +119,7 @@ public class NodeGroup {
         if (count == 0) {
             throw new IllegalStateException("standalone or no major node");
         }
+        // 按 matchIndex 排序
         Collections.sort(matchIndices);
         logger.debug("match indices {}", matchIndices);
         return matchIndices.get(count / 2).getMatchIndex();
@@ -145,8 +145,8 @@ public class NodeGroup {
         }
 
         @Override
-        public int compareTo(@Nonnull NodeMatchIndex o) {
-            return -Integer.compare(o.matchIndex, this.matchIndex);
+        public int compareTo(NodeMatchIndex o) {
+            return Integer.compare(matchIndex, o.matchIndex);
         }
 
         @Override
