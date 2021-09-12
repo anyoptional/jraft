@@ -33,4 +33,22 @@ public class NodeEndpoint {
         this.address = address;
     }
 
+
+    /**
+     * Get host.
+     *
+     * @return host
+     */
+    public String getHost() {
+        return this.address.getHost();
+    }
+
+    /**
+     * Get port.
+     *
+     * @return port
+     */
+    public int getPort() {
+        return this.address.getPort();
+    }
 }

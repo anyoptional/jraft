@@ -43,6 +43,10 @@ public class NodeGroup {
         this.members = initMembers(endpoints);
     }
 
+    GroupMember findSelf() {
+        return getRequiredGroupMember(selfId);
+    }
+
     @Nullable
     public GroupMember getGroupMember(NodeId id) {
         return members.get(id);

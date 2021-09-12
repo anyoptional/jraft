@@ -2,6 +2,7 @@ package com.anyoptional.raft.core.node;
 
 
 import com.anyoptional.raft.core.log.entry.EntryMeta;
+import com.anyoptional.raft.core.log.statemachine.StateMachine;
 import com.anyoptional.raft.core.node.role.*;
 import com.anyoptional.raft.core.node.store.NodeStore;
 import com.anyoptional.raft.core.rpc.Connector;
@@ -39,6 +40,11 @@ public class NodeImpl implements Node {
      * 当前的角色及信息
      */
     private AbstractNodeRole role;
+
+    /**
+     * 状态机
+     */
+    private StateMachine stateMachine;
 
     public NodeImpl(NodeContext context) {
         Preconditions.checkNotNull(context);
@@ -434,5 +440,28 @@ public class NodeImpl implements Node {
         // 立即重新同步日志，不用等下一次定时任务触发
         doReplicateLog0(member, context.getConfig().getMaxReplicationEntries());
     }
+
+    @Override
+    public RoleNameAndLeaderId getRoleNameAndLeaderId() {
+        return role.getNameAndLeaderId(context.getSelfId());
+    }
+
+    /**
+     * 注册状态机
+     */
+    @Override
+    public void registerStateMachine(StateMachine stateMachine) {
+        this.stateMachine = stateMachine;
+    }
+
+    /**
+     * 追加日志
+     * 上层服务提供命令内容，核心组件负责追加日志、节点间复制等操作
+     */
+    @Override
+    public void appendLog(byte[] commandBytes) {
+
+    }
+
 
 }

@@ -1,26 +1,27 @@
 package com.anyoptional.raft.core.node;
 
-import com.anyoptional.raft.core.node.config.NodeConfig;
 import com.anyoptional.raft.core.log.FileLog;
 import com.anyoptional.raft.core.log.Log;
 import com.anyoptional.raft.core.log.MemoryLog;
+import com.anyoptional.raft.core.node.config.NodeConfig;
 import com.anyoptional.raft.core.node.store.FileNodeStore;
 import com.anyoptional.raft.core.node.store.MemoryNodeStore;
 import com.anyoptional.raft.core.node.store.NodeStore;
 import com.anyoptional.raft.core.rpc.Connector;
+import com.anyoptional.raft.core.rpc.nio.NioConnector;
 import com.anyoptional.raft.core.schedule.DefaultScheduler;
 import com.anyoptional.raft.core.schedule.Scheduler;
-import com.anyoptional.raft.core.support.SingleThreadTaskExecutor;
+import com.anyoptional.raft.core.support.ListeningTaskExecutor;
 import com.anyoptional.raft.core.support.TaskExecutor;
 import com.google.common.base.Preconditions;
 import com.google.common.eventbus.EventBus;
 import io.netty.channel.nio.NioEventLoopGroup;
 import org.springframework.lang.Nullable;
 
-import javax.annotation.Nonnull;
 import java.io.File;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.Executors;
 
 /**
  * Node builder.
@@ -246,7 +247,7 @@ public class NodeBuilder {
      *
      * @return node
      */
-    @Nonnull
+
     public Node build() {
         return new NodeImpl(buildContext());
     }
@@ -256,7 +257,7 @@ public class NodeBuilder {
      *
      * @return node context
      */
-    @Nonnull
+
     private NodeContext buildContext() {
         NodeContext context = new NodeContext();
         context.setGroup(group);
@@ -267,27 +268,29 @@ public class NodeBuilder {
         context.setConfig(config);
         context.setEventBus(eventBus);
         context.setScheduler(scheduler != null ? scheduler : new DefaultScheduler(config));
-        context.setConnector(connector);
-        context.setTaskExecutor(taskExecutor != null ? taskExecutor : new SingleThreadTaskExecutor("taskExecutor"));
+        context.setConnector(connector != null ? connector : createNioConnector());
+        context.setTaskExecutor(taskExecutor != null ? taskExecutor : new ListeningTaskExecutor(
+                Executors.newSingleThreadExecutor(r -> new Thread(r, "node"))
+        ));
         context.setGroupConfigChangeTaskExecutor(groupConfigChangeTaskExecutor != null ? groupConfigChangeTaskExecutor :
-                new SingleThreadTaskExecutor("groupConfigChangeTaskExecutor"));
+                new ListeningTaskExecutor(Executors.newSingleThreadExecutor(r -> new Thread(r, "group-config-change"))));
         return context;
     }
 
-//    /**
-//     * Create nio connector.
-//     *
-//     * @return nio connector
-//     */
-//    @Nonnull
-//    private NioConnector createNioConnector() {
-//        int port = group.findSelf().getEndpoint().getPort();
-//        if (workerNioEventLoopGroup != null) {
-//            return new NioConnector(workerNioEventLoopGroup, selfId, eventBus, port, config.getLogReplicationInterval());
-//        }
-//        return new NioConnector(new NioEventLoopGroup(config.getNioWorkerThreads()), false,
-//                selfId, eventBus, port, config.getLogReplicationInterval());
-//    }
+    /**
+     * Create nio connector.
+     *
+     * @return nio connector
+     */
+
+    private NioConnector createNioConnector() {
+        int port = group.findSelf().getEndpoint().getPort();
+        if (workerNioEventLoopGroup != null) {
+            return new NioConnector(workerNioEventLoopGroup, selfId, eventBus, port, config.getLogReplicationInterval());
+        }
+        return new NioConnector(new NioEventLoopGroup(config.getNioWorkerThreads()), false,
+                selfId, eventBus, port, config.getLogReplicationInterval());
+    }
 
 //    /**
 //     * Evaluate mode.
@@ -295,7 +298,7 @@ public class NodeBuilder {
 //     * @return mode
 //     * @see NodeGroup#isStandalone()
 //     */
-//    @Nonnull
+//    
 //    private NodeMode evaluateMode() {
 //        if (standby) {
 //            return NodeMode.STANDBY;

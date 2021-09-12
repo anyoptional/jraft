@@ -68,7 +68,7 @@ class OutboundChannelGroup {
                     @Override
                     protected void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline pipeline = ch.pipeline();
-                        pipeline.addLast(new LengthFieldBasedFrameDecoder(2048, 0, 4));
+                        pipeline.addLast(new LengthFieldBasedFrameDecoder(2048, 4, 4));
                         pipeline.addLast(new Decoder());
                         pipeline.addLast(new Encoder());
                         pipeline.addLast(new ToRemoteHandler(eventBus, nodeId, selfNodeId));
