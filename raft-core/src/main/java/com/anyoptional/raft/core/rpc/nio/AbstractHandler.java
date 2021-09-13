@@ -18,7 +18,7 @@ abstract class AbstractHandler extends ChannelDuplexHandler {
     protected final EventBus eventBus;
     NodeId remoteId;
     protected Channel channel;
-    private AppendEntriesRpc lastAppendEntriesRpc;
+    private static AppendEntriesRpc lastAppendEntriesRpc;
 
     AbstractHandler(EventBus eventBus) {
         this.eventBus = eventBus;
@@ -39,14 +39,14 @@ abstract class AbstractHandler extends ChannelDuplexHandler {
             eventBus.post(new AppendEntriesRpcMessage(rpc, remoteId, channel));
         } else if (msg instanceof AppendEntriesResult) {
             AppendEntriesResult result = (AppendEntriesResult) msg;
-            if (lastAppendEntriesRpc == null) {
+            if (getLastAppendEntriesRpc() == null) {
                 logger.warn("no last append entries rpc");
             } else {
-                if (!Objects.equals(result.getRpcMessageId(), lastAppendEntriesRpc.getMessageId())) {
-                    logger.warn("incorrect append entries rpc message id {}, expected {}", result.getRpcMessageId(), lastAppendEntriesRpc.getMessageId());
+                if (!Objects.equals(result.getRpcMessageId(), getLastAppendEntriesRpc().getMessageId())) {
+                    logger.warn("incorrect append entries rpc message id {}, expected {}", result.getRpcMessageId(), getLastAppendEntriesRpc().getMessageId());
                 } else {
-                    eventBus.post(new AppendEntriesResultMessage(result, remoteId, lastAppendEntriesRpc));
-                    lastAppendEntriesRpc = null;
+                    eventBus.post(new AppendEntriesResultMessage(result, remoteId, getLastAppendEntriesRpc()));
+                    setLastAppendEntriesRpc(null);
                 }
             }
         }
@@ -55,7 +55,7 @@ abstract class AbstractHandler extends ChannelDuplexHandler {
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
         if (msg instanceof AppendEntriesRpc) {
-            lastAppendEntriesRpc = (AppendEntriesRpc) msg;
+            setLastAppendEntriesRpc((AppendEntriesRpc) msg);
         }
         super.write(ctx, msg, promise);
     }
@@ -66,4 +66,16 @@ abstract class AbstractHandler extends ChannelDuplexHandler {
         ctx.close();
     }
 
+    public AppendEntriesRpc getLastAppendEntriesRpc() {
+        return lastAppendEntriesRpc;
+    }
+
+    public void setLastAppendEntriesRpc(AppendEntriesRpc lastAppendEntriesRpc) {
+        if (lastAppendEntriesRpc == null) {
+//            logger.info("clearing lastAppendEntriesRpc");
+        } else {
+//            logger.info("record lastAppendEntriesRpc: {}", lastAppendEntriesRpc);
+        }
+        this.lastAppendEntriesRpc = lastAppendEntriesRpc;
+    }
 }

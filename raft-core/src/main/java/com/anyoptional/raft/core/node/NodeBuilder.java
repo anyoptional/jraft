@@ -261,7 +261,7 @@ public class NodeBuilder {
     private NodeContext buildContext() {
         NodeContext context = new NodeContext();
         context.setGroup(group);
-//        context.setMode(evaluateMode());
+        context.setMode(evaluateMode());
         context.setLog(log != null ? log : new MemoryLog());
         context.setStore(store != null ? store : new MemoryNodeStore());
         context.setSelfId(selfId);
@@ -292,21 +292,21 @@ public class NodeBuilder {
                 selfId, eventBus, port, config.getLogReplicationInterval());
     }
 
-//    /**
-//     * Evaluate mode.
-//     *
-//     * @return mode
-//     * @see NodeGroup#isStandalone()
-//     */
-//    
-//    private NodeMode evaluateMode() {
-//        if (standby) {
-//            return NodeMode.STANDBY;
-//        }
-//        if (group.isStandalone()) {
-//            return NodeMode.STANDALONE;
-//        }
-//        return NodeMode.GROUP_MEMBER;
-//    }
+    /**
+     * Evaluate mode.
+     *
+     * @return mode
+     * @see NodeGroup#isStandalone()
+     */
+
+    private NodeMode evaluateMode() {
+        if (standby) {
+            return NodeMode.STANDBY;
+        }
+        if (group.isStandalone()) {
+            return NodeMode.STANDALONE;
+        }
+        return NodeMode.GROUP_MEMBER;
+    }
 
 }

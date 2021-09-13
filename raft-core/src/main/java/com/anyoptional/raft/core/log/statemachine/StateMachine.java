@@ -10,6 +10,8 @@ public interface StateMachine {
      */
     int getLastApplied();
 
+    void setLastApplied(int lastApplied);
+
     /**
      * 应用日志
      * 日志组件回调上层服务的主要方法，上层服务在 applyLog(...)

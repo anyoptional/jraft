@@ -129,6 +129,10 @@ public class NodeGroup {
         return matchIndices.get(count / 2).getMatchIndex();
     }
 
+    public boolean isStandalone() {
+        return members.size() == 1 && members.containsKey(selfId);
+    }
+
     /**
      * Node match index.
      *

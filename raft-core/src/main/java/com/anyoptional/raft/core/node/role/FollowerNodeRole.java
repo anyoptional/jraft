@@ -4,6 +4,8 @@ import com.anyoptional.raft.core.node.NodeId;
 import com.anyoptional.raft.core.schedule.ElectionTimeout;
 import org.springframework.lang.Nullable;
 
+import java.util.Objects;
+
 /**
  * FollowerNodeRole 是 Immutable 的，当选举超时 或 收到来自 leader
  * 的心跳信息时，需要新建一个角色实例。
@@ -55,6 +57,20 @@ public class FollowerNodeRole extends AbstractNodeRole {
     @Override
     public void cancelTimeoutOrTask() {
         electionTimeout.cancel();
+    }
+
+    @Override
+    public RoleState getState() {
+        DefaultRoleState state = new DefaultRoleState(RoleName.FOLLOWER, term);
+        state.setVotedFor(votedFor);
+        state.setLeaderId(leaderId);
+        return state;
+    }
+
+    @Override
+    protected boolean doStateEquals(AbstractNodeRole role) {
+        FollowerNodeRole that = (FollowerNodeRole) role;
+        return Objects.equals(this.votedFor, that.votedFor) && Objects.equals(this.leaderId, that.leaderId);
     }
 
     @Override

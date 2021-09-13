@@ -67,4 +67,9 @@ public class NodeContext {
 
     private TaskExecutor groupConfigChangeTaskExecutor;
 
+    /**
+     * 节点模式
+     */
+    private NodeMode mode;
+
 }

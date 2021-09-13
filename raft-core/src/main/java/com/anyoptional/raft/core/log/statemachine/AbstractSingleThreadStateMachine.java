@@ -32,6 +32,11 @@ public abstract class AbstractSingleThreadStateMachine implements StateMachine {
     }
 
     @Override
+    public void setLastApplied(int lastApplied) {
+        this.lastApplied = lastApplied;
+    }
+
+    @Override
     public void applyLog(StateMachineContext context, int index, byte[] commandBytes, int firstLogIndex) {
         taskExecutor.submit(() -> doApplyLog(context, index, commandBytes, firstLogIndex));
     }

@@ -52,6 +52,19 @@ public class CandidateNodeRole extends AbstractNodeRole {
     }
 
     @Override
+    public RoleState getState() {
+        DefaultRoleState state = new DefaultRoleState(RoleName.CANDIDATE, term);
+        state.setVotesCount(votesCount);
+        return state;
+    }
+
+    @Override
+    protected boolean doStateEquals(AbstractNodeRole role) {
+        CandidateNodeRole that = (CandidateNodeRole) role;
+        return this.votesCount == that.votesCount;
+    }
+
+    @Override
     public String toString() {
         return "CandidateNodeRole{" +
                 "term=" + term +

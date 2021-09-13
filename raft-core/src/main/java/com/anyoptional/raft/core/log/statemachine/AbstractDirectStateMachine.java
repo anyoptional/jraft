@@ -16,6 +16,11 @@ public abstract class AbstractDirectStateMachine implements StateMachine {
     }
 
     @Override
+    public void setLastApplied(int lastApplied) {
+        this.lastApplied = lastApplied;
+    }
+
+    @Override
     public void applyLog(StateMachineContext context, int index, byte[] commandBytes, int firstLogIndex) {
         if (index <= lastApplied) {
             return;

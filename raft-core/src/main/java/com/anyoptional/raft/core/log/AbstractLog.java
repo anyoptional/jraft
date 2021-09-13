@@ -1,5 +1,8 @@
 package com.anyoptional.raft.core.log;
 
+import com.anyoptional.raft.core.log.statemachine.EmptyStateMachine;
+import com.anyoptional.raft.core.log.statemachine.StateMachine;
+import com.anyoptional.raft.core.log.statemachine.StateMachineContext;
 import com.anyoptional.raft.core.node.NodeId;
 import com.anyoptional.raft.core.log.entry.Entry;
 import com.anyoptional.raft.core.log.entry.EntryMeta;
@@ -20,6 +23,10 @@ public abstract class AbstractLog implements Log {
 
     protected EntrySequence entrySequence;
 
+    private StateMachine stateMachine = new EmptyStateMachine();
+
+    private final StateMachineContext stateMachineContext = new StateMachineContextImpl();
+
     @Override
     public int getNextIndex() {
         return entrySequence.getNextLogIndex();
@@ -28,6 +35,11 @@ public abstract class AbstractLog implements Log {
     @Override
     public int getCommitIndex() {
         return entrySequence.getCommitIndex();
+    }
+
+    @Override
+    public void setStateMachine(StateMachine stateMachine) {
+        this.stateMachine = stateMachine;
     }
 
     /**
@@ -117,14 +129,31 @@ public abstract class AbstractLog implements Log {
         if (!validateNewCommitIndex(newCommitIndex, currentTerm)) {
             return;
         }
+        logger.debug("advance commit index from {} to {}", entrySequence.getCommitIndex(), newCommitIndex);
         // 推进 commitIndex
         entrySequence.commit(newCommitIndex);
         // TODO: 状态机
+        advanceApplyIndex();
+    }
+
+    private void advanceApplyIndex() {
+        // start up and snapshot exists
+        int lastApplied = stateMachine.getLastApplied();
+//        int lastIncludedIndex = snapshot.getLastIncludedIndex();
+//        if (lastApplied == 0 && lastIncludedIndex > 0) {
+//            assert commitIndex >= lastIncludedIndex;
+//            applySnapshot(snapshot);
+//            lastApplied = lastIncludedIndex;
+//        }
+        for (Entry entry : entrySequence.subList(lastApplied + 1, entrySequence.getCommitIndex() + 1)) {
+            applyEntry(entry);
+        }
     }
 
     @Override
     public void close() {
         entrySequence.close();
+        stateMachine.shutdown();
     }
 
     private boolean validateNewCommitIndex(int newCommitIndex, int currentTerm) {
@@ -138,7 +167,8 @@ public abstract class AbstractLog implements Log {
             logger.debug("log of newCommitIndex {} not found", newCommitIndex);
             return false;
         }
-        // 按照raft算法，推荐commitIndex需要检查日志的term与当前的term是否一致
+        // 按照raft算法，推进commitIndex需要检查日志的term与当前的term是否一致
+        // 换句话说，只能推进由自己同步的日志
         if (meta.getTerm() != currentTerm) {
             logger.debug("log term of newCommitIndex {} miss match currentTerm {}", meta.getTerm(), currentTerm);
             return false;
@@ -147,6 +177,10 @@ public abstract class AbstractLog implements Log {
     }
 
     private boolean checkIfPreviousLogMatches(int prevLogIndex, int prevLogTerm) {
+        // 首次
+        if (prevLogIndex == 0) {
+            return true;
+        }
         EntryMeta meta = entrySequence.getEntryMeta(prevLogIndex);
         if (meta == null) {
             logger.debug("previous log {} not found", prevLogIndex);
@@ -210,9 +244,41 @@ public abstract class AbstractLog implements Log {
                 index > entrySequence.getLastLogIndex()) {
             return;
         }
-        // TODO: 如果日志已经应用了，需要重新构建状态机
+
+        // 如果日志已经应用了
+        int lastApplied = stateMachine.getLastApplied();
+        if (index < lastApplied && entrySequence.subList(index + 1, lastApplied + 1).stream().anyMatch(this::isApplicable)) {
+            logger.warn("applied log removed, reapply from start");
+//            applySnapshot(snapshot);
+            // TODO
+            stateMachine.setLastApplied(entrySequence.getFirstLogIndex() - 1);
+            logger.debug("apply log from {} to {}", entrySequence.getFirstLogIndex(), index);
+            // 就重新构建状态机
+            entrySequence.subList(entrySequence.getFirstLogIndex(), index + 1).forEach(this::applyEntry);
+        }
+        // 执行删除
         logger.debug("remove entries after {}", index);
         entrySequence.removeAfter(index);
+    }
+
+    private boolean isApplicable(Entry entry) {
+        return entry.getKind() == Entry.KIND_GENERAL;
+    }
+
+    private void applyEntry(Entry entry) {
+        // skip no-op entry and membership-change entry
+        if (isApplicable(entry)) {
+            stateMachine.applyLog(stateMachineContext, entry.getIndex(), entry.getCommandBytes(), entrySequence.getFirstLogIndex());
+        }
+    }
+
+    private class StateMachineContextImpl implements StateMachineContext {
+
+//        @Override
+//        public void generateSnapshot(int lastIncludedIndex) {
+//            eventBus.post(new SnapshotGenerateEvent(lastIncludedIndex));
+//        }
+
     }
 
     private static class EntrySequenceView implements Iterable<Entry> {

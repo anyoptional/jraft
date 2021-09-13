@@ -1,5 +1,6 @@
 package com.anyoptional.raft.core.log;
 
+import com.anyoptional.raft.core.log.statemachine.StateMachine;
 import com.anyoptional.raft.core.node.NodeId;
 import com.anyoptional.raft.core.log.entry.Entry;
 import com.anyoptional.raft.core.log.entry.EntryMeta;
@@ -67,6 +68,8 @@ public interface Log extends AutoCloseable {
      * {@link #getLastEntryMeta()} 来进行比较
      */
     boolean isNewerThan(int lastLogIndex, int lastLogTerm);
+
+    void setStateMachine(StateMachine stateMachine);
 
     @Override
     void close();

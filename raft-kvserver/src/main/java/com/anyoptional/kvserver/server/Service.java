@@ -56,7 +56,7 @@ public class Service {
         logger.debug("set {}", command.getKey());
         pendingCommands.put(command.getRequestId(), commandRequest);
         commandRequest.addCloseListener(() -> pendingCommands.remove(command.getRequestId()));
-
+        //
         node.appendLog(command.toBytes());
     }
 

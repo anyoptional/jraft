@@ -15,7 +15,6 @@ import java.util.List;
  */
 @Getter
 @Setter
-@ToString
 public class AppendEntriesRpc {
 
     private int messageId;
@@ -63,4 +62,16 @@ public class AppendEntriesRpc {
         return this.entries.isEmpty() ? this.prevLogIndex : this.entries.get(this.entries.size() - 1).getIndex();
     }
 
+    @Override
+    public String toString() {
+        return "AppendEntriesRpc{" +
+                "messageId='" + messageId +
+                "', entries.size=" + entries.size() +
+                ", leaderCommit=" + leaderCommit +
+                ", leaderId=" + leaderId +
+                ", prevLogIndex=" + prevLogIndex +
+                ", prevLogTerm=" + prevLogTerm +
+                ", term=" + term +
+                '}';
+    }
 }

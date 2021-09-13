@@ -3,6 +3,7 @@ package com.anyoptional.raft.core.rpc.nio;
 import com.anyoptional.raft.core.node.NodeId;
 import com.anyoptional.raft.core.rpc.message.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
@@ -10,6 +11,10 @@ import io.netty.handler.codec.MessageToByteEncoder;
 public class Encoder extends MessageToByteEncoder<Object> {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public Encoder() {
+        objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+    }
 
     @Override
     protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf out) throws Exception {

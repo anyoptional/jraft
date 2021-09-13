@@ -3,6 +3,7 @@ package com.anyoptional.raft.core.node.role;
 import com.anyoptional.raft.core.node.NodeId;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.springframework.lang.Nullable;
 
 /**
  * Raft 中三种角色的共性
@@ -25,6 +26,7 @@ public abstract class AbstractNodeRole {
         return new RoleNameAndLeaderId(name, getLeaderId(selfId));
     }
 
+    @Nullable
     public abstract NodeId getLeaderId(NodeId selfId);
 
     /**
@@ -33,5 +35,19 @@ public abstract class AbstractNodeRole {
      * 对 leader 来说存在日志复制定时任务
      */
     public abstract void cancelTimeoutOrTask();
+
+    /**
+     * 获取泛化的节点描述信息
+     */
+    public abstract RoleState getState();
+
+    public boolean stateEquals(AbstractNodeRole that) {
+        if (this.name != that.name || this.term != that.term) {
+            return false;
+        }
+        return doStateEquals(that);
+    }
+
+    protected abstract boolean doStateEquals(AbstractNodeRole role);
 
 }

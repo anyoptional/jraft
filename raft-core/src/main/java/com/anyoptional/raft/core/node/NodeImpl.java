@@ -17,7 +17,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * NodeImpl 处理任务只在 {@link NodeContext#getTaskExecutor()} 线程，因而线程封闭。
@@ -42,9 +44,9 @@ public class NodeImpl implements Node {
     private AbstractNodeRole role;
 
     /**
-     * 状态机
+     * 节点角色变更监听器
      */
-    private StateMachine stateMachine;
+    private final List<NodeRoleListener> roleListeners = new CopyOnWriteArrayList<>();
 
     public NodeImpl(NodeContext context) {
         Preconditions.checkNotNull(context);
@@ -59,6 +61,13 @@ public class NodeImpl implements Node {
     @VisibleForTesting
     AbstractNodeRole getRole() {
         return role;
+    }
+
+    /**
+     * 返回泛化的节点信息
+     */
+    RoleState getRoleState() {
+        return role.getState();
     }
 
     @Override
@@ -97,15 +106,27 @@ public class NodeImpl implements Node {
      * 角色切换
      */
     private synchronized void changeToRole(AbstractNodeRole newRole) {
-        logger.debug("node: {}, role state changed -> {}", context.getSelfId(), newRole);
+        if (!isStableBetween(role, newRole)) {
+            logger.debug("node: {}, role state changed -> {}", context.getSelfId(), newRole);
 
-        // votedFor 需要被记录，避免破坏一票制
-        NodeStore store = context.getStore();
-        store.setTerm(newRole.getTerm());
-        if (newRole.getName() == RoleName.FOLLOWER) {
-            store.setVotedFor(((FollowerNodeRole) newRole).getVotedFor());
+
+            // votedFor 需要被记录，避免破坏一票制
+            NodeStore store = context.getStore();
+            store.setTerm(newRole.getTerm());
+            if (newRole.getName() == RoleName.FOLLOWER) {
+                store.setVotedFor(((FollowerNodeRole) newRole).getVotedFor());
+            }
+
+            // notify listeners
+            roleListeners.forEach(l -> l.nodeRoleChanged(newRole.getState()));
         }
+
         role = newRole;
+    }
+
+    private boolean isStableBetween(@Nullable AbstractNodeRole before, AbstractNodeRole after) {
+        Preconditions.checkNotNull(after);
+        return before != null && before.stateEquals(after);
     }
 
     private ElectionTimeout scheduleElectionTimeout() {
@@ -151,21 +172,37 @@ public class NodeImpl implements Node {
         int newTerm = role.getTerm() + 1;
         // 取消当前定时任务
         role.cancelTimeoutOrTask();
-        // 切换角色为 candidate
-        changeToRole(new CandidateNodeRole(newTerm, scheduleElectionTimeout()));
 
-        // 2、发起投票请求
-        RequestVoteRpc rpc = new RequestVoteRpc();
-        rpc.setTerm(newTerm);
-        rpc.setCandidateId(context.getSelfId());
-        EntryMeta lastEntryMeta = context.getLog().getLastEntryMeta();
-        rpc.setLastLogIndex(lastEntryMeta.getIndex());
-        rpc.setLastLogTerm(lastEntryMeta.getTerm());
+        // 如果是单机
+        if (context.getGroup().isStandalone()) {
+            if (context.getMode() == NodeMode.STANDBY) {
+                logger.info("starts with standby mode, skip election");
+            } else {
+                // 自己直接就是 leader 了
+                logger.info("become leader, term {}", newTerm);
+                resetReplicatingStates();
+                changeToRole(new LeaderNodeRole(newTerm, scheduleLogReplicationTask()));
+                context.getLog().appendEntry(newTerm); // no-op log
+            }
+        } else {
+            // 集群模式的化就要开始选举了
+            logger.info("start election");
+            // 切换角色为 candidate
+            changeToRole(new CandidateNodeRole(newTerm, scheduleElectionTimeout()));
 
-        Connector connector = context.getConnector();
-        // 获取集群中的其它节点（不包括自身）
-        Set<NodeEndpoint> endpoints = context.getGroup().getEndpointsExceptSelf();
-        connector.sendRequestVote(rpc, endpoints);
+            // 2、发起投票请求
+            RequestVoteRpc rpc = new RequestVoteRpc();
+            rpc.setTerm(newTerm);
+            rpc.setCandidateId(context.getSelfId());
+            EntryMeta lastEntryMeta = context.getLog().getLastEntryMeta();
+            rpc.setLastLogIndex(lastEntryMeta.getIndex());
+            rpc.setLastLogTerm(lastEntryMeta.getTerm());
+
+            Connector connector = context.getConnector();
+            // 获取集群中的其它节点（不包括自身）
+            Set<NodeEndpoint> endpoints = context.getGroup().getEndpointsExceptSelf();
+            connector.sendRequestVote(rpc, endpoints);
+        }
     }
 
     /**
@@ -300,8 +337,10 @@ public class NodeImpl implements Node {
             // raft 算法要求，成为 leader 后必须马上发送心跳消息给其它 follower 节点从而
             // 重置其选举超时，进而使集群的主从关系稳定下来
             changeToRole(new LeaderNodeRole(role.getTerm(), scheduleLogReplicationTask()));
-            // 添加一条 no-op log，用来同步 index
+            // 添加一条 no-op log，用来同步 commitIndex
             context.getLog().appendEntry(role.getTerm()); // no-op log
+            // 关闭所有到 leader 的连接
+            context.getConnector().resetChannels();
         } else {
             changeToRole(new CandidateNodeRole(role.getTerm(), currentVotesCount, scheduleElectionTimeout()));
         }
@@ -309,6 +348,11 @@ public class NodeImpl implements Node {
 
     private void doReplicateLog() {
         logger.debug("replicate log");
+        // 单机的化直接提交 commitIndex 就可以了
+        if (context.getGroup().isStandalone()) {
+            context.getLog().advanceCommitIndex(context.getLog().getNextIndex() - 1, role.getTerm());
+            return;
+        }
         // 发送 AppendEntries 消息进行日志复制
         for (GroupMember member : context.getGroup().getReplicatingGroupMembers()) {
             doReplicateLog0(member, context.getConfig().getMaxReplicationEntries());
@@ -427,6 +471,10 @@ public class NodeImpl implements Node {
                 // 过半节点持久化了的化就推进 leader 的 commitIndex
                 context.getLog().advanceCommitIndex(context.getGroup().getMatchIndexOfMajor(), role.getTerm());
             }
+            if (member.getNextIndex() >= context.getLog().getNextIndex()) {
+                // 已经完全同步了
+                return;
+            }
         }
         // 回复失败
         else {
@@ -450,8 +498,9 @@ public class NodeImpl implements Node {
      * 注册状态机
      */
     @Override
-    public void registerStateMachine(StateMachine stateMachine) {
-        this.stateMachine = stateMachine;
+    public synchronized void registerStateMachine(StateMachine stateMachine) {
+        Preconditions.checkNotNull(stateMachine);
+        context.getLog().setStateMachine(stateMachine);
     }
 
     /**
@@ -460,8 +509,22 @@ public class NodeImpl implements Node {
      */
     @Override
     public void appendLog(byte[] commandBytes) {
-
+        Preconditions.checkNotNull(commandBytes);
+        // 只有 leader 才能处理请求
+        ensureLeader();
+        // 数据添加到缓冲区，等待日志复制定时任务
+        context.getTaskExecutor()
+                .submit(() -> {
+                   context.getLog().appendEntry(role.getTerm(), commandBytes);
+                });
     }
 
+    private void ensureLeader() {
+        RoleNameAndLeaderId state = role.getNameAndLeaderId(context.getSelfId());
+        if (state.getRoleName() != RoleName.LEADER) {
+            NodeEndpoint endpoint = state.getLeaderId() != null ? context.getGroup().getRequiredGroupMember(state.getLeaderId()).getEndpoint() : null;
+            throw new NotLeaderException(state.getRoleName(), endpoint);
+        }
+    }
 
 }
